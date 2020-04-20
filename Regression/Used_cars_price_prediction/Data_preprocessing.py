@@ -7,7 +7,8 @@ from sklearn.preprocessing import LabelEncoder
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import MinMaxScaler
 
-filename = 'true_car_listings.csv'
+filename = 'Git/ml_projects/Regression/Used_cars_price_prediction/true_car_listings.csv'
+save_path = 'Git/ml_projects/Regression/Used_cars_price_prediction/'
 
 class Preprocessor:
     """Used to preprocess data for further training"""
@@ -47,7 +48,7 @@ class Preprocessor:
         plt.hist(dataframe['Year'], bins=100)
         plt.title('Year')
 
-        plt.savefig('Numeric_before_preprocessing.png')
+        plt.savefig(save_path + 'Numeric_before_preprocessing.png')
         print('Histograms for numeric values before preprocessing saved to current directory')
 
         # Removing outliers - setting up a constraint of 3 standard deviations for price and mileage
@@ -68,11 +69,11 @@ class Preprocessor:
         plt.hist(df_clean['Year'], bins=100)
         plt.title('Year')
 
-        plt.savefig('Numeric_after_preprocessing.png')
+        plt.savefig(save_path + 'Numeric_after_preprocessing.png')
         print('Histograms for numeric values after preprocessing saved to current directory')
 
         # Use 'US City Populations.csv' to encode the 'City' column
-        us_cities = pd.read_excel('US City Populations.xlsx')
+        us_cities = pd.read_excel('Git/ml_projects/Regression/Used_cars_price_prediction/US City Populations.xlsx')
         us_cities.drop('State', axis=1, inplace=True)
         us_cities.sort_values('Population', ascending=False)
         us_cities.drop_duplicates(subset='City', keep='first', inplace=True)
@@ -98,14 +99,15 @@ class Preprocessor:
 
         plt.figure(figsize=(6, 4))
         sns.scatterplot(x='Mileage', y='Price', data=honda, marker='x')
-        plt.savefig('Mileage_vs_price.png')
+        plt.savefig(save_path + 'Mileage_vs_price.png')
         print('Mileage vs price plot saved to current directory')
 
         plt.figure(figsize=(6, 4))
         sns.scatterplot(x='Year', y='Price', data=honda, marker='x')
-        plt.savefig('Year_vs_price.png')
+        plt.savefig(save_path + 'Year_vs_price.png')
         print('Year vs price plot saved to current directory')
         print('\nData cleaned\n')
+        df_clean.to_csv(save_path + 'Clean_data.csv', encoding='utf-8', index=False)
 
         return df_clean
 
@@ -150,7 +152,9 @@ class Preprocessor:
         df_encoded = self.label_encode(df_clean)
         X_train, X_test, y_train, y_test = self.split_data(df_encoded)
         X_train, X_test = self.scale_numeric(X_train, X_test)
+
         print('\nData has been preprocessed for training')
+
 
 if __name__ == "__main__":
     data_prep = Preprocessor()
