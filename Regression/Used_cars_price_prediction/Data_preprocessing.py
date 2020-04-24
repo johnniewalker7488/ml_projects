@@ -5,7 +5,6 @@ import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
 from scipy import stats
-from sklearn.preprocessing import LabelEncoder
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import MinMaxScaler, StandardScaler, OneHotEncoder
 from sklearn.compose import make_column_transformer
@@ -16,13 +15,10 @@ save_path = 'Git/ml_projects/Regression/Used_cars_price_prediction/'
 class Preprocessor:
     """Used to preprocess data for further training"""
 
-    def import_data(self, filename):
-        """Returns given csv file as a pandas dataframe"""
-        df_raw = pd.read_csv(filename)
-        return df_raw
+    def clean_data(self, filename):
 
-    def clean_data(self, dataframe):
-        """Performs data cleaning for a given pandas dataframe:
+        """ Imports given csv file as a pandas dataframe
+            Performs data cleaning for a given pandas dataframe:
                 - checks for NaNs
                 - removes outliers
                 - plots histograms of numeric values before and after outliers removal
@@ -34,21 +30,23 @@ class Preprocessor:
             Returns: pandas dataframe with cleaned data
         """
 
+        df_raw = pd.read_csv(filename)
+
         # Checking for missing values
-        print('Missing values found: ', dataframe.isnull().values.any())
+        print('Missing values found: ', df_raw.isnull().values.any())
 
         # Histograms of numeric features before outliers removal
         plt.figure(figsize=(20,8))
         plt.subplot(1, 3, 1)
-        plt.hist(dataframe['Price'], bins=100)
+        plt.hist(df_raw['Price'], bins=100)
         plt.title('Price')
 
         plt.subplot(1, 3, 2)
-        plt.hist(dataframe['Mileage'], bins=100)
+        plt.hist(df_raw['Mileage'], bins=100)
         plt.title('Mileage')
 
         plt.subplot(1, 3, 3)
-        plt.hist(dataframe['Year'], bins=100)
+        plt.hist(df_raw['Year'], bins=100)
         plt.title('Year')
 
         plt.savefig(save_path + 'Numeric_before_preprocessing.png')
@@ -56,7 +54,7 @@ class Preprocessor:
 
         # Removing outliers - setting up a constraint of 3 standard deviations for price and mileage
         std_dev = 3
-        df_clean = dataframe[(np.abs(stats.zscore(dataframe[['Price', 'Mileage']])) < float(std_dev)).all(axis=1)]
+        df_clean = df_raw[(np.abs(stats.zscore(df_raw[['Price', 'Mileage']])) < float(std_dev)).all(axis=1)]
 
         # Histograms of numeric features before outliers removal
         plt.figure(figsize=(20,8))
@@ -76,7 +74,7 @@ class Preprocessor:
         print('Histograms for numeric values after preprocessing saved to current directory')
 
         # Use 'US City Populations.csv' to encode the 'City' column
-        '''
+        
         us_cities = pd.read_excel('Git/ml_projects/Regression/Used_cars_price_prediction/US City Populations.xlsx')
         us_cities.drop('State', axis=1, inplace=True)
         us_cities.sort_values('Population', ascending=False)
@@ -89,8 +87,8 @@ class Preprocessor:
         # Encode the city column with 1 for city population more than 50000 and 0 for less 50000
         # and remove the unnecessary columns
         df_clean['City'] = np.where(df_clean['Population'] > 50000, 1, 0)
-        '''
-        df_clean.drop(['City', 'Vin'], axis=1, inplace=True)
+        
+        df_clean.drop(['Vin', 'Population'], axis=1, inplace=True)
 
         # Preprocess the categorical columns
         df_clean['State'] = df_clean['State'].str.lower()
@@ -120,33 +118,14 @@ class Preprocessor:
         df_clean.to_csv(save_path + 'Clean_data.csv', encoding='utf-8', index=False)
 
         return df_clean
-
-    # def encoder(self, dataframe):
-    #     """Encodes categorical data"""
-        
-    #     df_to_encode = dataframe
-    #     column_trans = make_column_transformer((OneHotEncoder(), ['State', 'Make', 'Model']),
-    #                                             remainder='passthrough')
-
-    #     df_encoded = column_trans.fit_transform(df_to_encode)
-    #     #df_joint = pd.concat([df_numeric, df_encoded], axis=1)
-    #     print('Categorical features encoded: ', df_encoded.shape)
-
-    #     return df_encoded
     
-    def split_data(self, dataframe):
-        """Splits the data into train and test"""
+    def split_data(self, dataframe, test_size, random_state=42):
+        """Splits the data into train and test sets"""
 
         X = dataframe.drop('Price', axis=1)
         y = dataframe['Price']
 
-        column_trans = make_column_transformer((OneHotEncoder(), ['State', 'Make', 'Model']),
-                                                remainder='passthrough')
-        X = column_trans.fit_transform(X)
-
-        print('\nShape of encoded training data: ', X.shape)
-
-        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.1, random_state=1)
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, random_state=random_state)
 
         print('\nData split into train and test sets')
 
@@ -156,25 +135,32 @@ class Preprocessor:
         """Scales numeric data"""
 
         scaler = StandardScaler()
-        X_train.iloc[:, 0:2] = scaler.fit_transform(X_train.iloc[:, 0:2])
-        X_test.iloc[:, 0:2] = scaler.transform(X_test.iloc[:, 0:2])
+        X_train.loc[:, ['Year', 'Mileage']] = scaler.fit_transform(X_train.loc[:, ['Year', 'Mileage']])
+        X_test.loc[:, ['Year', 'Mileage']] = scaler.transform(X_test.loc[:, ['Year', 'Mileage']])
 
-        print('Numeric features scaled')
+        print('\nNumeric features scaled')
         
         return X_train, X_test
     
-    def run_preprocessing(self):
-        df_raw = self.import_data(filename)
-        df_clean = self.clean_data(df_raw)
-        #df_encoded = self.encoder(df_clean)
-        X_train, X_test, y_train, y_test = self.split_data(df_clean)
-        #X_train_sc, X_test_sc = self.scale_numeric(X_train, X_test)
+    def one_hot(self, X_train, X_test):
+        """Splits the data into train and test with one-hot encoding of categorical features"""
 
-        print('\nData has been preprocessed for training\n')
+        
+        column_trans = make_column_transformer((OneHotEncoder(), ['State', 'Make', 'Model']),
+                                                remainder='passthrough')
+        
+        X_train = column_trans.fit_transform(X_train)
+        print('X_train encoded shape: ', X_train.shape)
+        X_test = column_trans.fit_transform(X_test)
+        print('X_test encoded shape: ', X_test.shape)
 
-        return X_train, X_test, y_train, y_test
-
-
+        return X_train, X_test
+    
 if __name__ == "__main__":
     data_prep = Preprocessor()
-    data_prep.run_preprocessing()
+    df_clean = data_prep.clean_data(filename)
+    X_train, X_test, y_train, y_test = data_prep.split_data(df_clean, test_size=0.2)
+    X_train, X_test = data_prep.scale_numeric(X_train, X_test)
+    X_train, X_test = data_prep.one_hot(X_train, X_test)
+    
+    print('\nData has been preprocessed for training\n')
